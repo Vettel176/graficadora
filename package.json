@@ -25,7 +25,7 @@
     "chartjs-chart-matrix": "^3.0.0",
     "formik": "^2.4.6",
     "html2canvas": "^1.4.1",
-    "jspdf": "^3.0.3",
+    "jspdf": "^4.2.1",
     "jszip": "^3.10.1",
     "next": "14.2.35",
     "next-auth": "^4.24.8",
