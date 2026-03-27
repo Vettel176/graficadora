@@ -3,7 +3,7 @@ import Layout from './components/Layout';
 import Home from './pages/Home';
 import Config from './pages/Config';
 import Charts from './pages/Charts';
-import Products from './pages/Products';
+import Dashboard from './pages/Dashboard';
 
 function App() {
   return (
@@ -11,7 +11,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<Home />} />
-          <Route path="productos" element={<Products />} />
+          <Route path="dashboard" element={<Dashboard />} />
           <Route path="graficas" element={<Charts />} />
           <Route path="configuracion" element={<Config />} />
         </Route>

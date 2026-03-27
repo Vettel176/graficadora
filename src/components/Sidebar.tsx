@@ -16,7 +16,7 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ isExpanded, toggleSidebar }) => {
   const menuItems = [
     { path: '/', name: 'Inicio', icon: <HomeIcon /> },
-    { path: '/productos', name: 'Productos', icon: <InventoryIcon /> },
+    { path: '/dashboard', name: 'Dashboard', icon: <InventoryIcon /> },
     { path: '/graficas', name: 'Gráficas', icon: <BarChartIcon /> },
     { path: '/configuracion', name: 'Configuración', icon: <SettingsIcon /> },
   ];
@@ -32,7 +32,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, toggleSidebar }) => {
           {isExpanded ? <MenuOpenIcon /> : <MenuIcon />}
         </button>
       </div>
-      
+
       <nav className="sidebar-nav">
         {menuItems.map((item) => (
           <NavLink
