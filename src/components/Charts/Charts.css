@@ -1,0 +1,182 @@
+/* Variables para Light Mode */
+:root {
+  --primary: #6366f1;
+  --accent: #4f46e5;
+  --text-main: #1e293b;
+  --text-muted: #64748b;
+  --bg-card: #ffffff;
+  --border-color: #e2e8f0;
+  --input-bg: #f8fafc;
+}
+
+.loader-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  background: var(--bg-card);
+  border-radius: 16px;
+  border: 1px solid var(--border-color);
+  gap: 1.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(99, 102, 241, 0.1);
+  border-left-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.subtitle {
+  color: var(--text-muted);
+  margin-bottom: 2rem;
+  font-size: 1.1rem;
+}
+
+.combobox-label {
+  font-weight: 600;
+  color: var(--text-main);
+  text-transform: capitalize;
+  font-size: 0.95rem;
+  letter-spacing: 0.5px;
+}
+/* Contenedor para alinear Input y Select */
+.input-row {
+  display: flex;
+  gap: 15px;
+  width: 100%;
+  margin-bottom: 15px; /* Espacio antes del textarea */
+}
+
+/* 1. Estilo para el INPUT (Título) */
+.elegant-input {
+  flex: 2; /* Toma más espacio que el select */
+  padding: 0.75rem 1rem;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  color: #1e293b;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.elegant-input:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+/* 2. Estilo para el SELECT (Tipo) */
+.elegant-select {
+  flex: 1; /* Más compacto */
+  padding: 0.75rem 1rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  color: #475569;
+  font-size: 0.95rem;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem;
+  outline: none;
+}
+
+.elegant-select:hover {
+  border-color: #cbd5e1;
+}
+
+/* 3. Estilo para el TEXTAREA (Descripción) */
+.elegant-area {
+  width: 100%;
+  min-height: 80px;
+  padding: 0.75rem 1rem;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  color: #334155;
+  font-family: inherit;
+  font-size: 0.95rem;
+  resize: vertical; /* Permite al usuario ajustar el alto */
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.elegant-area:focus {
+  border-color: #6366f1;
+  background: #fff;
+}
+
+/* Placeholder global */
+::placeholder {
+  color: #94a3b8;
+  opacity: 1;
+}
+
+/* Mensajes de error más legibles en blanco */
+.error-message {
+  padding: 1rem 1.5rem;
+  background: #fef2f2;
+  border-left: 4px solid #ef4444;
+  color: #b91c1c;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+  font-size: 0.9rem;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  color: white;
+  border: none;
+  padding: 0.75rem 1.25rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-primary:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.btn-primary:disabled {
+  background: #e2e8f0;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.chart-wrapper {
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  grid-column: 1 / -1;
+  min-height: 400px;
+  display: flex;
+  flex-grow: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  padding: 2rem;
+  margin-top: 1rem;
+}
+
+
+/* Estilo para los inputs de tipo color y range */
+input[type="range"] {
+  accent-color: var(--primary);
+}
