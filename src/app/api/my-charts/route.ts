@@ -1,6 +1,15 @@
 // src/app/api/my-charts/route.ts
 import { NextResponse } from 'next/server';
-import pool from '@/lib/db';
+import { Pool } from 'pg';
+
+// Reutiliza tu configuración de Pool (lo ideal es tenerlo en /src/lib/db.js)
+const pool = new Pool({
+  host: 'monorail.proxy.rlwy.net',
+  port: 50961,
+  database: 'railway',
+  user: 'planet',
+  password: 'planet',
+});
 
 export async function GET() {
   try {
