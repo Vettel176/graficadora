@@ -17,7 +17,7 @@ import { useRouter } from 'next/navigation';
 
 const drawerWidth = 240;
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({ children }) {
   const router = useRouter();
   
   return (

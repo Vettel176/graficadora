@@ -1,5 +1,5 @@
 'use client';
-import Charts from '@/components/Charts/Charts';
+import Charts from '../../components/Charts/Charts';
 
 
 export default function GraficasPage() {

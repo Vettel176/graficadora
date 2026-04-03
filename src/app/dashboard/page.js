@@ -2,8 +2,8 @@
 import React, { useState } from 'react';
 import { Box, Button, Collapse, Typography, Paper, Divider } from '@mui/material';
 import { Add as AddIcon, Close as CloseIcon, BarChart as ChartIcon } from '@mui/icons-material';
-import DashboardPersonalized from '@/components/Dashboard/DashboardPersonalized';
-import Charts from '@/components/Charts/Charts';
+import DashboardPersonalized from '../../components/Dashboard/DashboardPersonalized';
+import Charts from '../../components/Charts/Charts';
 
 export default function DashboardPage() {
   const [showEditor, setShowEditor] = useState(false);

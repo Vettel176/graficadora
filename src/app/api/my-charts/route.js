@@ -18,7 +18,7 @@ export async function GET() {
     );
     
     return NextResponse.json(rows);
-  } catch (err: any) {
+  } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
