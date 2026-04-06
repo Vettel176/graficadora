@@ -51,6 +51,29 @@ const Charts = () => {
   const [loadingChart, setLoadingChart] = useState(false);
   const [errorChart, setErrorChart] = useState(null);
 
+  //Logica Parametros Dinamicos
+  const [dynamicParams, setDynamicParams] = useState([
+    { id: Date.now(), key: 'fecha_maxima', label: 'Fecha Maxima', type: 'date', value: '2026-01-01' }
+  ]);
+
+  const addParam = () => {
+    setDynamicParams([...dynamicParams, { id: Date.now(), key: '', label: '', type: 'text', value: '' }]);
+  };
+
+  const updateParam = (id, field, val) => {
+    setDynamicParams(dynamicParams.map(p => p.id === id ? { ...p, [field]: val } : p));
+  };
+
+  const prepareSql = (rawSql, params) => {
+  let finalSql = rawSql;
+  params.forEach(param => {
+    // Reemplaza todas las ocurrencias de {{key}} por el valor
+    const regex = new RegExp(`{{${param.key}}}`, 'g');
+    finalSql = finalSql.replace(regex, param.value);
+  });
+  return finalSql;
+};
+
   //Personalizacion Grafica real-time Fase 2
   const dynamicOptions = {
     responsive: true,
@@ -83,6 +106,8 @@ const Charts = () => {
       return;
     }
 
+    const sqlFinal = injectParams(sqlQuery, dynamicParams);
+    console.log("SQL que se enviará al servidor:", sqlFinal);
     setLoadingChart(true);
     setErrorChart(null);
 
@@ -90,7 +115,7 @@ const Charts = () => {
       const response = await fetch('/api/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sql: sqlQuery }),
+        body: JSON.stringify({ sql: sqlFinal }),
       });
 
       if (!response.ok) {
@@ -108,6 +133,18 @@ const Charts = () => {
     }
   };
 
+  const injectParams = (sql, params) => {
+    let processedSql = sql;
+    params.forEach(p => {
+      if (p.key) {
+        // Reemplazo todas las {{key}} por el valor actual
+        const regex = new RegExp(`{{${p.key}}}`, 'g');
+        processedSql = processedSql.replace(regex, p.value);
+      }
+    });
+    return processedSql;
+  };
+
   const handleSave = async () => {
     const payload = {
       titulo: chartTitle,
@@ -119,7 +156,8 @@ const Charts = () => {
         title_position: designConfig.titlePosition,
         description_position: designConfig.descriptionPosition,
         show_legend: designConfig.showLegend,
-        border_radius: designConfig.borderRadius
+        border_radius: designConfig.borderRadius,
+        dynamic_params: dynamicParams
       }
     };
   
@@ -215,7 +253,36 @@ const Charts = () => {
                   onChange={(e) => setSqlQuery(e.target.value)}
                 />
               </div>
-
+              <div className="dynamic-params-section">
+                <label className="combobox-label">Parámetros Dinámicos (Use {'{{key}}'} en SQL)</label>
+                {dynamicParams.map((param) => (
+                  <div key={param.id} className="input-row" style={{ marginBottom: '10px' }}>
+                    <input 
+                      placeholder="key (ej: fecha)" 
+                      className="elegant-input" 
+                      value={param.key}
+                      onChange={(e) => updateParam(param.id, 'key', e.target.value)}
+                    />
+                    <select 
+                      className="elegant-select"
+                      value={param.type}
+                      onChange={(e) => updateParam(param.id, 'type', e.target.value)}
+                    >
+                      <option value="text">Texto</option>
+                      <option value="date">Fecha</option>
+                      <option value="number">Número</option>
+                    </select>
+                    <input 
+                      placeholder="Valor prueba" 
+                      className="elegant-input"
+                      value={param.value}
+                      onChange={(e) => updateParam(param.id, 'value', e.target.value)}
+                    />
+                  </div>
+                ))}
+                <button type="button" onClick={addParam} className="btn-primary">Agregar Parámetro +</button>
+              </div>
+                <hr></hr>
               <button
                 className="btn-primary"
                 disabled={loadingChart}

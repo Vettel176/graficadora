@@ -59,7 +59,7 @@ export default function RootLayout({ children }) {
               <List>
                 {[
                   { text: 'Home', icon: <HomeIcon />, path: '/' },
-                  { text: 'Graficas', icon: <ChartIcon />, path: '/graficas' },
+                  { text: 'Configuracion', icon: <ChartIcon />, path: '/configuracion' },
                   { text: 'Dashboard', icon: <DashIcon />, path: '/dashboard' },
                 ].map((item) => (
                   <ListItem key={item.text} disablePadding>

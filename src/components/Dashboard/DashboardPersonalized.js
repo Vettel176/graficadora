@@ -27,7 +27,7 @@ ChartJS.register(
   Legend
 );
 
-// Sub-componente ChartCard: Eliminamos la interfaz y el tipo React.FC
+
 const ChartCard = ({ config }) => {
   const [data, setData] = useState(null);
   const [results, setResults] = useState(null);
@@ -39,6 +39,8 @@ const ChartCard = ({ config }) => {
     ? JSON.parse(config.config_extra) 
     : (config.config_extra || {});
 
+  const [localParams, setLocalParams] = useState(extra.dynamic_params || []);
+
   const mainColor = extra.main_color || '#6366f1';
   const titlePos = extra.title_position || 'top';
   const descPos = extra.description_position || 'top';
@@ -48,45 +50,68 @@ const ChartCard = ({ config }) => {
   // Paleta de colores para Widgets y Pasteles
   const piePalette = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#8b5cf6'];
 
-  useEffect(() => {
-    const fetchChartData = async () => {
-      try {
-        const response = await fetch('/api/execute', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sql: config.query_sql }),
-        });
-
-        if (!response.ok) throw new Error('Error al cargar datos');
-        const rows = await response.json();
-
-        if (rows.length > 0) {
-          setResults(rows); // Guardamos para el Widget
-
-          if (config.tipo_grafico !== 'widget') {
-            const keys = Object.keys(rows[0]);
-            setData({
-              labels: rows.map(r => r[keys[0]] || 'Nulo'),
-              datasets: [{
-                label: config.titulo,
-                data: rows.map(r => Number(r[keys[1]])),
-                backgroundColor: config.tipo_grafico === 'pie' ? piePalette : mainColor,
-                borderColor: '#ffffff',
-                borderWidth: 1,
-                borderRadius: config.tipo_grafico === 'bar' ? borderRadius : 0,
-              }]
-            });
-          }
-        }
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
+  const injectParams = (sql, params) => {
+  let processedSql = sql;
+  params.forEach(p => {
+    if (p.key) {
+      const regex = new RegExp(`{{${p.key}}}`, 'g');
+      processedSql = processedSql.replace(regex, p.value);
       }
-    };
+    });
+    return processedSql;
+  };
 
+
+const fetchChartData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // INYECTAMOS LOS PARÁMETROS ANTES DEL FETCH
+      const sqlFinal = injectParams(config.query_sql, localParams);
+      
+      const response = await fetch('/api/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sql: sqlFinal }),
+      });
+
+      if (!response.ok) throw new Error('Error al cargar datos');
+      const rows = await response.json();
+
+      if (rows.length > 0) {
+        setResults(rows);
+        if (config.tipo_grafico !== 'widget') {
+          const keys = Object.keys(rows[0]);
+          setData({
+            labels: rows.map(r => r[keys[0]] || 'Nulo'),
+            datasets: [{
+              label: config.titulo,
+              data: rows.map(r => Number(r[keys[1]])),
+              backgroundColor: config.tipo_grafico === 'pie' ? piePalette : mainColor,
+              borderColor: '#ffffff',
+              borderWidth: 1,
+              borderRadius: config.tipo_grafico === 'bar' ? borderRadius : 0,
+            }]
+          });
+        }
+      } else {
+        setResults([]);
+        setData(null);
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchChartData();
-  }, [config.query_sql, config.titulo, config.tipo_grafico]);
+  }, []); // Solo al montar
+
+  const handleParamChange = (key, value) => {
+    setLocalParams(prev => prev.map(p => p.key === key ? { ...p, value } : p));
+  };
 
   const options = {
     responsive: true,
@@ -109,30 +134,59 @@ const ChartCard = ({ config }) => {
   };
 
   return (
-    <div className="info-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+    <div className="info-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', position: 'relative' }}>
       
-      {/* Título manual si no se usa el de Chart.js */}
-      
+      {/* SECCIÓN DE FILTROS DINÁMICOS (Si existen) */}
+      {localParams.length > 0 && (
+        <div className="dynamic-filters-overlay" style={{ 
+          display: 'flex', 
+          flexWrap: 'wrap', 
+          gap: '10px', 
+          padding: '10px', 
+          background: 'rgba(255,255,255,0.03)',
+          borderRadius: '8px',
+          marginBottom: '10px'
+        }}>
+          {localParams.map(p => (
+            <div key={p.key} style={{ display: 'flex', flexDirection: 'column' }}>
+              <label style={{ fontSize: '0.7rem', color: '#64748b' }}>{p.label || p.key}</label>
+              <input 
+                type={p.type || 'text'} 
+                className="elegant-input"
+                style={{ padding: '4px 8px', fontSize: '0.8rem', width: '120px' }}
+                value={p.value}
+                onChange={(e) => handleParamChange(p.key, e.target.value)}
+              />
+            </div>
+          ))}
+          <button 
+            onClick={fetchChartData} 
+            className="btn-primary" 
+            style={{ padding: '5px 15px', alignSelf: 'flex-end', fontSize: '0.8rem' }}
+          >
+            Actualizar
+          </button>
+        </div>
+      )}
 
-      {/* Descripción ARRIBA */}
+      {/* Resto de tu render (Título, Gráfica, Descripción) */}
       {descPos === 'top' && config.descripcion && (
         <p className="subtitle" style={{ fontSize: '0.85rem', color: '#94a3b8' }}>{config.descripcion}</p>
       )}
 
-      <div style={{ height: '300px', width: '100%', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ height: '300px', width: '100%', position: 'relative' }}>
         {loading && <div className="spinner mini-spinner"></div>}
-        {error && <p style={{ color: '#f43f5e' }}>{error}</p>}
+        {error && <p style={{ color: '#f43f5e', fontSize: '0.8rem' }}>{error}</p>}
         
         {!loading && !error && (
           config.tipo_grafico === 'widget' && results ? (
-            /* RENDER WIDGET */
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ color: mainColor, fontSize: '4rem', fontWeight: 'bold', textShadow: `0 0 20px ${mainColor}33` }}>
-                {results[0] ? Object.values(results[0])[0] : '0'}
-              </div>
-            </div>
+             <div style={{ textAlign: 'center', marginTop: '50px' }}>
+                <div style={{ color: mainColor, fontSize: '4rem', fontWeight: 'bold' }}>
+                  {results[0] ? Object.values(results[0])[0] : '0'}
+                </div>
+                <p style={{ color: '#94a3b8' }}>{config.titulo}</p>
+             </div>
           ) : (
-            /* RENDER GRÁFICAS */
             data && (
               <>
                 {config.tipo_grafico === 'bar' && <Bar data={data} options={options} />}
