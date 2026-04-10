@@ -6,20 +6,32 @@ import DashboardPersonalized from '../../components/Dashboard/DashboardPersonali
 import Charts from '../../components/Charts/Charts';
 
 export default function DashboardPage() {
+  const [editingChart, setEditingChart] = useState(null);
   const [showEditor, setShowEditor] = useState(false);
+  //Refresh page, after delete or update
+  const [refreshKey, setRefreshKey] = useState(0);
+  const handleRefresh = () => setRefreshKey(prev => prev + 1);
+
+  const handleEditTrigger = (chart) => {
+    setEditingChart(chart); // 1. Guardamos la info
+    setShowEditor(true);    // 2. Abrimos el Collapse
+  };
 
   return (
     <Box sx={{ p: 1 }}>
       {/* DASHBOARD CON LAS GRÁFICAS EXISTENTES */}
       <Box sx={{ mt: 2 }}>
-        <DashboardPersonalized />
+        <DashboardPersonalized key={refreshKey} onEditChart={handleEditTrigger}/>
       </Box>
       <Box sx={{ display: 'flex', justifyContent: 'end', alignItems: 'center', mb: 4 }}>
         <Button
           variant="contained"
           startIcon={showEditor ? <CloseIcon /> : <AddIcon />}
           color={showEditor ? "error" : "primary"}
-          onClick={() => setShowEditor(!showEditor)}
+          onClick={() => {
+            if (showEditor) setEditingChart(null); // Limpiar si cerramos manualmente
+            setShowEditor(!showEditor);
+          }}
           sx={{ borderRadius: '8px', textTransform: 'none', px: 3 }}
         >
           {showEditor ? "Cerrar Editor" : "Nueva Gráfica"}
@@ -27,7 +39,7 @@ export default function DashboardPage() {
       </Box>
 
       {/* COMPONENTE COLAPSABLE (EL EDITOR) */}
-      <Collapse in={showEditor}>
+      <Collapse in={showEditor} unmountOnExit>
         <Paper 
           elevation={0} 
           sx={{ 
@@ -45,8 +57,16 @@ export default function DashboardPage() {
             </Typography>
           </Box>
           <Divider sx={{ mb: 3 }} />
-          
-          <Charts />
+          {showEditor && (
+          <Charts editData={editingChart} 
+            onFinished={() => {
+            setEditingChart(null);
+            setShowEditor(false);
+            //Actualizacion de pagina para ver cambios al terminar
+            handleRefresh();
+          }} 
+        />
+          )}
         </Paper>
       </Collapse>
     </Box>

@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server';
 import { Pool } from 'pg';
 
-// Reutiliza tu configuración de Pool (lo ideal es tenerlo en /src/lib/db.js)
+
 const pool = new Pool({
   host: 'monorail.proxy.rlwy.net',
   port: 50961,
@@ -11,9 +11,10 @@ const pool = new Pool({
   password: 'planet',
 });
 
-export async function POST(request) {
+// Consulta de Graficas en BD
+ export async function POST(request) {
   try {
-    // En Next.js extraemos el body así:
+
     const { sql } = await request.json();
 
     if (!sql) {
@@ -23,7 +24,7 @@ export async function POST(request) {
       );
     }
 
-    // Tu validación de seguridad (¡Muy importante!)
+    // Validación de seguridad 
     const isSelect = sql.trim().toUpperCase().startsWith('SELECT');
     if (!isSelect) {
       return NextResponse.json(
