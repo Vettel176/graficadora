@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Bar, Pie, Line } from 'react-chartjs-2';
+import { Typography, Button, Box } from '@mui/material';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -28,7 +29,7 @@ ChartJS.register(
 );
 
 
-const ChartCard = ({ config, onEdit, onDelete }) => {
+const ChartCard = ({ config, onEdit, onDelete, globalParams}) => {
   const [data, setData] = useState(null);
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -66,8 +67,18 @@ const fetchChartData = async () => {
     setLoading(true);
     setError(null);
     try {
+      //Logica Global Params
+      let finalParamsForQuery = [...localParams];
+
+      // 2. BUSCAMOS EL MATCH: 
+      // Si un parámetro global tiene la misma KEY que uno local, usamos el valor GLOBAL
+      finalParamsForQuery = finalParamsForQuery.map(localP => {
+        const matchGlobal = globalParams.find(gp => gp.key === localP.key);
+        return matchGlobal ? { ...localP, value: matchGlobal.value } : localP;
+      });
+
       // INYECTAMOS LOS PARÁMETROS ANTES DEL FETCH
-      const sqlFinal = injectParams(config.query_sql, localParams);
+      const sqlFinal = injectParams(config.query_sql, finalParamsForQuery);
       
       const response = await fetch('/api/graphics/manual', {
         method: 'POST',
@@ -115,7 +126,7 @@ const fetchChartData = async () => {
 
   useEffect(() => {
     fetchChartData();
-  }, []); // Solo al montar
+  }, [globalParams]); // Global Params reaccionando
 
   const handleParamChange = (key, value) => {
     setLocalParams(prev => prev.map(p => p.key === key ? { ...p, value } : p));
@@ -235,15 +246,29 @@ const fetchChartData = async () => {
 };
 
 // Componente Principal Dashboard
-const DashboardPersonalized = ({onEditChart}) => {
+ const DashboardPersonalized = ({onEditChart}) => {
   const [savedCharts, setSavedCharts] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // 1. Estado para los filtros en los inputs
+  const [globalParams, setGlobalParams] = useState([]);
+  // 2. Estado para los filtros aplicados a las gráficas
+  const [activeFilters, setActiveFilters] = useState([]);
+  const [newFilterConfig, setNewFilterConfig] = useState({ key: '', label: '', type: 'text' });
 
+  // --- CARGA INICIAL ---
   useEffect(() => {
     fetch('/api/graphics/handler')
       .then(res => res.json())
       .then(data => {
         setSavedCharts(data);
+        
+        // Si existen gráficas y la primera tiene parámetros globales, los cargamos
+        if (data.length > 0 && data[0].global_params) {
+          const loadedParams = data[0].global_params;
+          setGlobalParams(loadedParams);
+          setActiveFilters(loadedParams); // Para que carguen con datos de inmediato
+        }
         setLoading(false);
       })
       .catch(err => {
@@ -251,6 +276,50 @@ const DashboardPersonalized = ({onEditChart}) => {
         setLoading(false);
       });
   }, []);
+
+  // --- PERSISTENCIA (GUARDAR EN DB) ---
+  const saveGlobalSettings = async () => {
+    try {
+      const response = await fetch('/api/graphics/global', { // Tu nuevo endpoint
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ params: globalParams }),
+      });
+
+      if (response.ok) {
+        alert("Configuración de filtros guardada permanentemente");
+      } else {
+        throw new Error("Error al guardar");
+      }
+    } catch (err) {
+      alert("No se pudo guardar la configuración: " + err.message);
+    }
+  };
+
+  const applyFilters = () => {
+    setActiveFilters([...globalParams]);
+  };
+
+  const addGlobalFilter = () => {
+  if (!newFilterConfig.key || !newFilterConfig.label) {
+    alert("Por favor rellena la Llave y la Etiqueta");
+    return;
+  }
+
+  const newFilter = { 
+    ...newFilterConfig, 
+    id: Date.now(), 
+    value: '' 
+  };
+
+    setGlobalParams([...globalParams, newFilter]);
+    // Limpiamos el mini-formulario
+    setNewFilterConfig({ key: '', label: '', type: 'text' });
+  };
+
+  const handleGlobalChange = (key, value) => {
+    setGlobalParams(prev => prev.map(p => p.key === key ? { ...p, value } : p));
+  };
 
   // --- Eliminar - Deshabilitar ---
   const handleDelete = async (id) => {
@@ -271,25 +340,113 @@ const DashboardPersonalized = ({onEditChart}) => {
   if (loading) return <div className="page-wrapper"><div className="spinner"></div></div>;
 
   return (
-    <div className="page-wrapper">
-      
-      {savedCharts.length === 0 ? (
-        <div className="info-card"><p className="empty-state">No hay métricas configuradas.</p></div>
-      ) : (
-        <div className="dashboard-grid" style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))',
-          gap: '20px'
-        }}>
-          {savedCharts.map(chart => (
-            <ChartCard 
-              key={chart.grafica_id} 
-              config={chart} 
-              onEdit={onEditChart} 
-              onDelete={handleDelete}/>
+    <div className="page-wrapper"> 
+      <div className="info-card" style={{ marginBottom: '20px', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+        {/* --- SECCIÓN 1: CONFIGURAR NUEVO FILTRO --- */}
+      <Box sx={{ mb: 3, pb: 2, borderBottom: '1px dashed #cbd5e1' }}>
+        <Typography variant="caption" sx={{ fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase' }}>
+          Configurar Nuevo Filtro Global
+        </Typography>
+        <Box sx={{ display: 'flex', gap: 2, mt: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+          <input 
+            placeholder="Llave SQL" 
+            className="elegant-input" 
+            style={{ width: '200px' }}
+            value={newFilterConfig.key}
+            onChange={(e) => setNewFilterConfig({...newFilterConfig, key: e.target.value})}
+          />
+          <input 
+            placeholder="Etiqueta" 
+            className="elegant-input" 
+            style={{ width: '250px' }}
+            value={newFilterConfig.label}
+            onChange={(e) => setNewFilterConfig({...newFilterConfig, label: e.target.value})}
+          />
+          <select 
+            className="elegant-select"
+            value={newFilterConfig.type}
+            onChange={(e) => setNewFilterConfig({...newFilterConfig, type: e.target.value})}
+          >
+            <option value="text">Texto</option>
+            <option value="date">Fecha</option>
+            <option value="number">Número</option>
+          </select>
+          <Button 
+            variant="outlined" 
+            onClick={addGlobalFilter}
+            sx={{ textTransform: 'none', borderColor: '#6366f1', color: '#6366f1' }}
+          >
+            + Añadir al Tablero
+          </Button>
+        </Box>
+      </Box>
+
+      {/* --- SECCIÓN 2: FILTROS ACTIVOS (LOS QUE SE CONSULTAN) --- */}
+      <Box>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
+            🌍 Filtros del Tablero Actual
+          </Typography>
+          <Button 
+            variant="contained" 
+            onClick={saveGlobalSettings} 
+            startIcon={<span>💾</span>}
+            sx={{ backgroundColor: '#6366f1', textTransform: 'none' }}
+          >
+            Guardar Cambios
+          </Button>
+        </Box>
+
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'flex-end' }}>
+          {globalParams.map(gp => (
+            <Box key={gp.key} sx={{ position: 'relative', display: 'flex', gap: 1, alignItems: 'flex-end' }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                <label style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 'bold', marginBottom: '4px' }}>
+                  {gp.label} <small>({gp.key})</small>
+                </label>
+                <input 
+                  type={gp.type}
+                  className="elegant-input"
+                  style={{ width: '180px', borderLeft: '4px solid #6366f1' }}
+                  value={gp.value}
+                  onChange={(e) => handleGlobalChange(gp.key, e.target.value)}
+                />
+              </Box>
+              
+              {/* Botón para eliminar el filtro del dashboard */}
+              <button 
+                onClick={() => setGlobalParams(globalParams.filter(p => p.key !== gp.key))}
+                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '1.2rem', padding: '0 0 8px 0' }}
+                title="Eliminar este filtro"
+              >
+                ×
+              </button>
+            </Box>
           ))}
-        </div>
-      )}
+
+          <Button 
+            variant="contained" 
+            onClick={applyFilters}
+            sx={{ height: '42px', px: 4, backgroundColor: '#06b9aa', textTransform: 'none' }}
+          >
+            Consultar Tablero
+          </Button>
+        </Box>
+      </Box>
+    </div>
+
+      {/* --- GRID DE GRÁFICAS --- */}
+      <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '20px' }}>
+        {savedCharts.map(chart => (
+          <ChartCard 
+            key={chart.grafica_id} 
+            config={chart} 
+            globalParams={activeFilters} // <-- Las gráficas solo reaccionan a activeFilters
+            onEdit={onEditChart} 
+            onDelete={handleDelete}
+          />
+        ))}
+      </div>
     </div>
   );
 };
