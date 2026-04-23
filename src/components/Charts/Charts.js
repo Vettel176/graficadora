@@ -1,4 +1,5 @@
 import  { useState, useEffect } from 'react';
+import { MatrixController, MatrixElement } from 'chartjs-chart-matrix';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -12,11 +13,13 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
-import { Bar, Pie, Line } from 'react-chartjs-2';
+import { Bar, Pie, Line , Chart } from 'react-chartjs-2';
 import './Charts.css';
 import { blue, green, red, yellow } from '@mui/material/colors';
 
 ChartJS.register(
+  MatrixController, 
+  MatrixElement,
   CategoryScale,
   LinearScale,
   BarElement,
@@ -120,9 +123,7 @@ const dynamicOptions = {
     plugins: {
       legend: {
         // Forzar visualización si hay más de 1 serie de datos
-        display: (chartDataResults && Object.keys(chartDataResults[0]).length > 2) 
-                  ? true 
-                  : designConfig.showLegend,
+        display: chartType === 'matrix' ? false : (chartDataResults && Object.keys(chartDataResults[0]).length > 2 ? true : designConfig.showLegend),
         position: 'bottom',
         labels: {
           color: '#94a3b8',
@@ -142,24 +143,23 @@ const dynamicOptions = {
       },
       // Tip: Tooltip
       tooltip: {
-        backgroundColor: '#1e293b',
-        titleColor: '#60a5fa',
-        bodyColor: '#fff',
-        borderColor: 'rgba(255,255,255,0.1)',
-        borderWidth: 1
+      callbacks: {
+        label: (context) => {
+          if (chartType === 'matrix') {
+            return `Valor: ${context.dataset.data[context.dataIndex].v}`;
+          }
+          return context.formattedValue;
+        }
       }
-    },
-    scales: chartType !== 'pie' && chartType !== 'widget' ? {
-      y: { 
-        beginAtZero: true, // Importante para no sesgar los datos
-        ticks: { color: '#94a3b8' }, 
-        grid: { color: 'rgba(255, 255, 255, 0.05)' } 
-      },
-      x: { 
-        ticks: { color: '#94a3b8' }, 
-        grid: { color: 'rgba(255, 255, 255, 0.05)' } 
-      }
-    } : {}
+    }
+  },
+    scales: chartType === 'matrix' ? { // diferentes escalas para matrix
+    x: { type: 'category', ticks: { color: '#94a3b8' }, grid: { display: false } },
+    y: { type: 'category', ticks: { color: '#94a3b8' }, grid: { display: false }, offset: true }
+  } : (chartType !== 'pie' && chartType !== 'widget' ? {
+    y: { beginAtZero: true, ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255, 255, 255, 0.05)' } },
+    x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255, 255, 255, 0.05)' } }
+  } : {})
   };
 
 
@@ -268,27 +268,49 @@ const injectParams = (sql, params) => {
   // Procesador de datos para Chart.js (Adaptado para SQL dinámico)
     const generateChartJsData = () => {
       if (!chartDataResults || chartDataResults.length === 0) return null;
-    
       const keys = Object.keys(chartDataResults[0]);
 
-      //En caso de haber valores nullos
+      // --- LÓGICA ESPECIAL PARA MAPA DE CALOR (MATRIX) ---
+      if (chartType === 'matrix') {
 
-      const labels = chartDataResults.map(row => {
-      const val = row[keys[0]];
-      return val !== null && val !== undefined ? String(val) : "Nulo";
-      });
-      console.log("Generando Grafica......")
+        const xLabels = [...new Set(chartDataResults.map(r => String(r[keys[0]])))];
+        const yLabels = [...new Set(chartDataResults.map(r => String(r[keys[1]])))];
+        return {
+          datasets: [{
+            label: chartTitle || 'Mapa de Calor',
+            data: chartDataResults.map(row => ({
+              x: String(row[keys[0]]), // Primera columna: Eje X
+              y: String(row[keys[1]]), // Segunda columna: Eje Y
+              v: Number(row[keys[2]])  // Tercera columna: Intensidad
+            })),
+            backgroundColor(context) {
+              const item = context.dataset.data[context.dataIndex];
+              if (!item) return 'transparent';
+              // Calculamos opacidad basada en el valor 'v'
+              // Ajustamos el divisor (50) según el rango esperado de tus datos
+              const alpha = Math.min(item.v / 12, 1); 
+              return `rgba(99, 102, 241, ${alpha})`; 
+            },
+            borderWidth: 1,
+            borderColor: 'rgba(255,255,255,0.1)',
+            // Calculamos el tamaño dinámico de los cuadros
+            width: ({chart}) => (chart.chartArea?.width / [...new Set(chartDataResults.map(r => r[keys[0]]))].length) - 1,
+            height: ({chart}) => (chart.chartArea?.height / [...new Set(chartDataResults.map(r => r[keys[1]]))].length) - 1,
+          }]
+        };
+      }
+    
+      // --- LÓGICA PARA GRÁFICAS NORMALES (BAR, LINE, PIE) ---
+      const labels = chartDataResults.map(row => String(row[keys[0]] || "Nulo"));
       const datasets = keys.slice(1).map((key, index) => ({
         label: String(key),
         data: chartDataResults.map(row => {
-        const val = row[key];
-        // Si el valor no es un número válido, ponemos 0 para no romper el gráfico
-        const num = Number(val);
-        return isNaN(num) ? 0 : num;
+          const num = Number(row[key]);
+          return isNaN(num) ? 0 : num;
         }),
-        // Usamos el color del array, o uno por defecto si no existe
+
         backgroundColor: chartType === 'pie' 
-          ? ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#8b5cf6'] // El pie suele ser multicolor
+          ? ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#8b5cf6'] 
           : (designConfig.colors[index] || '#6366f1'),
         borderColor: '#ffffff',
         borderWidth: 1,
@@ -326,6 +348,7 @@ const injectParams = (sql, params) => {
                   <option value="bar">Gráfico de Barras</option>
                   <option value="pie">Gráfico de Pastel</option>
                   <option value="line">Gráfico de Líneas</option>
+                  <option value="matrix">Mapa de Calor</option>
                   <option value="widget">Widget</option>
                 </select>
               </div>
@@ -531,6 +554,7 @@ const injectParams = (sql, params) => {
                         {chartType === 'bar' && <Bar options={dynamicOptions} data={generateChartJsData()} />}
                         {chartType === 'pie' && <Pie options={dynamicOptions} data={generateChartJsData()} />}
                         {chartType === 'line' && <Line options={dynamicOptions} data={generateChartJsData()} />}
+                        {chartType === 'matrix' && <Chart type="matrix" options={dynamicOptions} data={generateChartJsData()} />}
                       </>
                     )}
                   </div>

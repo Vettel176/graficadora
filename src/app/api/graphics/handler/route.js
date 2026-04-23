@@ -1,13 +1,5 @@
 import { NextResponse } from 'next/server';
-import { Pool } from 'pg';
-
-const pool = new Pool({
-  host: 'monorail.proxy.rlwy.net',
-  port: 50961,
-  database: 'railway',
-  user: 'planet',
-  password: 'planet',
-});
+import { pool } from '../../../../lib/db';
 
 
 // --- GET: Listar todas las  Graficas ---

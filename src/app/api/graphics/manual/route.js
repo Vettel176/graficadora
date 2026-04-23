@@ -1,15 +1,8 @@
 // src/app/api/execute/route.ts
 import { NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { poolGraphs }  from '../../../../lib/db';
 
-
-const pool = new Pool({
-  host: 'monorail.proxy.rlwy.net',
-  port: 50961,
-  database: 'railway',
-  user: 'planet',
-  password: 'planet',
-});
 
 // Consulta de Graficas en BD
  export async function POST(request) {
@@ -34,7 +27,7 @@ const pool = new Pool({
     }
 
     // Ejecución del query
-    const { rows } = await pool.query(sql);
+    const { rows } = await poolGraphs.query(sql);
 
     // Respuesta exitosa
     return NextResponse.json(rows);

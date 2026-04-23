@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Bar, Pie, Line } from 'react-chartjs-2';
+import { Bar, Pie, Line, Chart } from 'react-chartjs-2';
 import { Typography, Button, Box } from '@mui/material';
+import { MatrixController, MatrixElement } from 'chartjs-chart-matrix';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -16,6 +17,8 @@ import {
 } from 'chart.js';
 
 ChartJS.register(
+  MatrixController, 
+  MatrixElement,
   CategoryScale,
   LinearScale,
   BarElement,
@@ -91,9 +94,34 @@ const fetchChartData = async () => {
 
       if (rows.length > 0) {
         setResults(rows);
-        
-        if (config.tipo_grafico !== 'widget') {
-          const keys = Object.keys(rows[0]);
+        const keys = Object.keys(rows[0]);
+        // --- LÓGICA ESPECIAL PARA MATRIX (MAPA DE CALOR) ---
+        if (config.tipo_grafico === 'matrix') {
+          const xLabels = [...new Set(rows.map(r => String(r[keys[0]])))];
+          const yLabels = [...new Set(rows.map(r => String(r[keys[1]])))];
+          setData({
+            datasets: [{
+              label: config.titulo,
+              data: rows.map(row => ({
+                x: String(row[keys[0]]), // Eje X
+                y: String(row[keys[1]]), // Eje Y
+                v: Number(row[keys[2]])  // Valor
+              })),
+              backgroundColor(context) {
+                const item = context.dataset.data[context.dataIndex];
+                if (!item) return 'transparent';
+                const alpha = Math.min(item.v / 12, 1); // Sensibilidad del color
+                return `rgba(99, 102, 241, ${alpha})`;
+              },
+
+              // Calculo dinámico de dimensiones
+              width: ({chart}) => chart.chartArea ? (chart.chartArea.width / [...new Set(rows.map(r => r[keys[0]]))].length) - 1 : 0,
+              height: ({chart}) => chart.chartArea ? (chart.chartArea.height / [...new Set(rows.map(r => r[keys[1]]))].length) - 1 : 0,
+            }]
+          });
+        }
+        // --- LÓGICA PARA GRÁFICAS ESTÁNDAR ---
+        else if (config.tipo_grafico !== 'widget') {
           // La primera columna siempre es la etiqueta (Eje X)
           const labels = rows.map(r => r[keys[0]] || 'Nulo');
 
@@ -145,8 +173,20 @@ const fetchChartData = async () => {
         font: { size: 16 }
       }
     },
-    //Configuracion Texto Y y X de la grafica mas grid
-    scales: config.tipo_grafico !== 'pie' && config.tipo_grafico !== 'widget' ? {
+    // --- CONFIGURACIÓN CRÍTICA PARA MATRIX ---
+  scales: config.tipo_grafico === 'matrix' ? {
+    x: {
+      type: 'category', // Obligatorio para strings como 'Mon'
+      ticks: { color: '#64748b' },
+      grid: { display: false }
+    },
+    y: {
+      type: 'category', // Obligatorio para que las horas se apilen
+      ticks: { color: '#64748b' },
+      grid: { display: false },
+      offset: true // Ayuda a centrar los cuadros
+    }
+  }: config.tipo_grafico !== 'pie' && config.tipo_grafico !== 'widget' ? {
       y: { ticks: { color: '#00440c' }, grid: { color: 'rgba(255, 255, 255, 0.05)' } },
       x: { ticks: { color: '#00440c' }, grid: { color: 'rgba(255, 255, 255, 0.05)' } }
     } : {}
@@ -236,6 +276,15 @@ const fetchChartData = async () => {
                 {config.tipo_grafico === 'bar' && <Bar data={data} options={options} />}
                 {config.tipo_grafico === 'pie' && <Pie data={data} options={options} />}
                 {config.tipo_grafico === 'line' && <Line data={data} options={options} />}
+                {config.tipo_grafico === 'matrix' && (<Chart type="matrix" data={data} options={options} />)}
+                {config.tipo_grafico === 'widget' && (
+                <div style={{ textAlign: 'center', paddingTop: '40px' }}>
+                  <div style={{ color: mainColor, fontSize: '4rem', fontWeight: 'bold' }}>
+                    {results?.[0] ? Object.values(results[0])[0] : '0'}
+                  </div>
+                  <p style={{ color: '#64748b' }}>{config.titulo}</p>
+                 </div>
+                )}
               </>
             )
           )
@@ -412,7 +461,7 @@ const fetchChartData = async () => {
                   onChange={(e) => handleGlobalChange(gp.key, e.target.value)}
                 />
               </Box>
-              
+                    
               {/* Botón para eliminar el filtro del dashboard */}
               <button 
                 onClick={() => setGlobalParams(globalParams.filter(p => p.key !== gp.key))}
@@ -436,7 +485,7 @@ const fetchChartData = async () => {
     </div>
 
       {/* --- GRID DE GRÁFICAS --- */}
-      <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px'}}>
         {savedCharts.map(chart => (
           <ChartCard 
             key={chart.grafica_id} 

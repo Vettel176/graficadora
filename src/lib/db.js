@@ -1,8 +1,11 @@
 import { Pool } from 'pg'; 
 
 // Configuracio de cadena de conexion de Base de Datos
-const pool = new Pool({
+export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
-export default pool;
+export const poolGraphs = new Pool({
+  connectionString: process.env.DATABASE_URL_GRAPHS,
+});
+
